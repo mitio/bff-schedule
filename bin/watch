@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require 'rubygems'
+require 'bundler/setup'
+require 'listen'
+
+if ARGV.size < 1
+  puts "Usage: #{__FILE__} arguments"
+  exit 1
+end
+
+puts "Listening for changes..."
+render_command = File.expand_path('../render', __FILE__)
+
+Listen.to(File.expand_path('../..', __FILE__), ignore: /\.pdf$/) do |modified, added, removed|
+  puts `#{render_command} #{ARGV.join(' ')}`
+end

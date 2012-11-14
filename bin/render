@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 
 require 'rubygems'
-require 'bundler'
-
-Bundler.require :default
+require 'bundler/setup'
+require 'prawn'
 require_relative '../day'
 require_relative '../schedule'
 
@@ -13,14 +13,24 @@ if ARGV.size < 2
 end
 
 input_file, output_file = ARGV
-puts "#{input_file} -> #{output_file}"
-
 schedule = Schedule.new input_file
+main_font = File.expand_path('../../fonts/DejaVuSans.ttf', __FILE__)
 
-p schedule.map(&:name)
+Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do |pdf|
+  pdf.font main_font
 
-# Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do |pdf|
-#   Day.new.render_in pdf
-# end
+  # First page
+  pdf.font main_font, size: 20, style: :bold do
+    pdf.text 'Банско филм фест', align: :center
+    pdf.text '2012', align: :center
+  end
 
-puts 'Done.'
+  schedule.sort_by(&:starts_at).group_by(&:date).each do |date, day_events|
+    day_events.group_by(&:location).each do |location, events|
+      pdf.start_new_page margin: 10
+      pdf.text "Location: #{location} Date: #{date} Ev: #{events.size}"
+    end
+  end
+end
+
+puts "Generated #{output_file}"

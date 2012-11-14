@@ -1,4 +1,5 @@
 require 'csv'
+require 'date'
 
 class Schedule
   include Enumerable
@@ -10,9 +11,25 @@ class Schedule
 
     def method_missing(name, *args)
       if @fields.has_key?(name.to_s)
-        @fields[name.to_s]
+        get name
       else
         super
+      end
+    end
+
+    def get(field)
+      field = field.to_s
+      value = @fields[field]
+
+      case field
+      when 'date'
+        Date.parse(value)
+      when /_at$/
+        date = get 'date'
+        hour, min, sec = value.split(':').map(&:to_i)
+        Time.new date.year, date.month, date.day, hour, min, sec
+      else
+        value
       end
     end
   end
