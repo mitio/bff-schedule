@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'bundler'
+
+Bundler.require :default
+require_relative '../day'
+
+if ARGV.empty?
+  puts "Usage: #{__FILE__} path-to-output.pdf"
+  exit 1
+end
+
+output_file = ARGV.first
+
+puts "Saving result to: #{output_file}"
+
+Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do |pdf|
+  Day.new.render_in pdf
+end
+
+puts 'Done.'
