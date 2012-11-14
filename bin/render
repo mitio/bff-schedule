@@ -5,18 +5,22 @@ require 'bundler'
 
 Bundler.require :default
 require_relative '../day'
+require_relative '../schedule'
 
-if ARGV.empty?
-  puts "Usage: #{__FILE__} path-to-output.pdf"
+if ARGV.size < 2
+  puts "Usage: #{__FILE__} path-to-schedule.csv path-to-output.pdf"
   exit 1
 end
 
-output_file = ARGV.first
+input_file, output_file = ARGV
+puts "#{input_file} -> #{output_file}"
 
-puts "Saving result to: #{output_file}"
+schedule = Schedule.new input_file
 
-Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do |pdf|
-  Day.new.render_in pdf
-end
+p schedule.map(&:name)
+
+# Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do |pdf|
+#   Day.new.render_in pdf
+# end
 
 puts 'Done.'
