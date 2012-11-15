@@ -12,6 +12,21 @@ def weekday_for(date)
   ][date.wday - 1]
 end
 
+def day_suffix_for(day)
+  [
+    'ти',
+    'ви',
+    'ри',
+    'ти',
+    'ти',
+    'ти',
+    'ти',
+    'ми',
+    'ми',
+    'ти',
+  ][day % 10]
+end
+
 def combine_events_in_boxes(pdf, events, hour_height, min_event_height)
   combined_events = []
   last_combined_event = []

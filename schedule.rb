@@ -7,6 +7,8 @@ class Schedule
   include Enumerable
 
   class Event
+    attr_accessor :number
+
     def initialize(fields)
       @fields = Hash[fields]
     end

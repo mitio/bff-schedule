@@ -27,30 +27,31 @@ min_event_height   = 10
 column_spacing     = 10
 event_padding      = 1
 main_text_color    = '333131'
+hours_color        = '555353'
+hour_lines_color   = 'DDD9D8'
+columns_left       = 35
 event_columns      = {
   -> event { event.location == 'Тържествена зала' } => {
     background_color: 'EFACB2',
     text_color: 'B71C16',
-    left: 50,
+    left: columns_left,
     width: 50,
   },
   -> event { event.location == 'Заседателна зала' } => {
     background_color: 'C0FCC3',
     text_color: '388712',
-    left: 110,
+    left: columns_left + 60,
     width: 50,
   },
-  -> event { event.location == 'Голяма зала' } => {
+  -> event { event.location == 'Голяма зала' and event.starts_at.hour > 17 } => {
     background_color: 'F9E0BD',
     text_color: 'E5601E',
-    left: 50,
-    width: 220,
+    left: columns_left,
   },
   -> event { event.location == 'хотел Гардения' } => {
     background_color: 'CDD0F9',
     text_color: '3274E5',
-    left: 50,
-    width: 220,
+    left: columns_left,
   },
 }
 start_hour  = [10, 0, 0]
@@ -82,28 +83,44 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
   end
 
   schedule.sort_by(&:starts_at).group_by(&:date).each_with_index do |(date, day_events), date_index|
-    start_new_page margin: 10
+    # Give numbers to the events
+    day_events.reject(&:coffee_break?).each_with_index do |event, event_index|
+      event.number = event_index + 1
+    end
+
+    # Visual event bubbles page
+    start_new_page margin: 20
 
     fill_color main_text_color
-    text "#{weekday_for date}, #{date.day}-и"
+    text "<b>#{weekday_for date}</b>, #{date.day}<sup>-#{day_suffix_for date.day}</sup>", inline_format: true, size: 12, align: :center
 
     move_down 10
     columns_top = cursor
     day_starts_at = Time.new date.year, date.month, date.day, *start_hour
 
     # Hours
+    fill_color hours_color
     top_offset = columns_top
     hour_labels.each do |hour_label, duration|
-      hour_box_height = duration * hour_height
-      bounding_box([0, top_offset], width: hour_column_width, height: hour_box_height) do
+      hour_box_height   = duration * hour_height
+      hour_label_height = height_of hour_label
+      bounding_box([0, top_offset + hour_label_height / 2], width: hour_column_width, height: hour_box_height) do
         text hour_label
       end
+
+      line_width 1
+      stroke_color hour_lines_color
+      dash 2
+      stroke_horizontal_line columns_left, bounds.right, at: top_offset
+      undash
+
       top_offset -= hour_box_height
     end
 
     # Events
-    event_index = 0
     event_columns.each do |filter, css|
+      css[:width] ||= bounds.right - css[:left]
+
       # Group events if needed so that no event box
       # will be shorter than min_event_height
       combined_events = combine_events_in_boxes(self, day_events.select(&filter), hour_height, min_event_height)
@@ -117,7 +134,7 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
           # Draw boxes
           fill_color css[:background_color]
           stroke_color css[:text_color]
-          self.line_width = 2
+          line_width 2
 
           box_rectangle = [css[:left], top_offset], css[:width], event_box_height, 3
 
@@ -129,12 +146,10 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
         bounding_box([css[:left], top_offset], width: css[:width], height: event_box_height) do
           unless coffee_break
             events_and_start_times = events.map do |event|
-              event_index += 1
-
               if css[:width] > 150
-                "<b>#{event_index}</b> — #{event.starts_at.strftime('%H:%M')} — #{event.name}"
+                "<b>#{event.number}</b> — #{event.starts_at.strftime('%H:%M')}, #{event.name}"
               else
-                "<b>#{event_index}</b> — #{event.starts_at.strftime('%H:%M')}"
+                "<b>#{event.number}</b> — #{event.starts_at.strftime('%H:%M')}"
               end
             end.join('<br>')
 
@@ -151,17 +166,18 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
       end
     end
 
+    # Detailed events page
     start_new_page margin: 10
 
     fill_color main_text_color
     text "#{page_number}", align: :right
     move_down 10
 
-    day_events.reject(&:coffee_break?).each_with_index do |event, event_index|
+    day_events.reject(&:coffee_break?).each do |event|
       _, css = event_columns.find { |condition, css| condition.call(event) }
       next unless css
 
-      event_number = sprintf('% 2s.', event_index + 1).gsub ' ', Prawn::Text::NBSP
+      event_number = sprintf('% 2s.', event.number).gsub ' ', Prawn::Text::NBSP
       event_time   = event.starts_at.strftime('%H:%M')
 
       fill_color css[:text_color]
