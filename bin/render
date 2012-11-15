@@ -14,15 +14,23 @@ end
 
 input_file, output_file = ARGV
 schedule = Schedule.new input_file
+root_path = File.expand_path('../..', __FILE__)
 
 # Settings
-main_font          = File.expand_path('../../fonts/DejaVuSans.ttf', __FILE__)
+main_font          = "#{root_path}/fonts/DejaVuSans.ttf"
 hour_height        = 37
 hour_column_width  = 60
-event_column_width = 110
+event_column_width = 150
+min_event_height   = 25
 events_columns = {
-  -> event { event.location == 'Тържествена зала' } => 'EFACB2',
-  -> event { event.location == 'Заседателна зала' } => 'C0FCC3',
+  -> event { event.location == 'Тържествена зала' } => {
+    background_color: 'EFACB2',
+    text_color: 'B71C16',
+  },
+  -> event { event.location == 'Заседателна зала' } => {
+    background_color: 'C0FCC3',
+    text_color: '4DB818',
+  },
 }
 hour_labels = {
   '10:30' => 1.5,
@@ -51,29 +59,59 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) 
     columns_top = cursor
 
     # Hours column
+    top_offset = columns_top
     hour_labels.each do |hour_label, duration|
       hour_box_height = duration * hour_height
-      bounding_box([0, columns_top], width: hour_column_width, height: hour_box_height) do
+      bounding_box([0, top_offset], width: hour_column_width, height: hour_box_height) do
         text hour_label
       end
-      move_down hour_box_height
+      top_offset -= hour_box_height
     end
 
     # Events columns
     left_offset = hour_column_width
-    events_columns.each do |event_filter, column_color|
+    events_columns.each do |event_filter, properties|
       top_offset = columns_top
+
+      # Group events if needed so that no event box
+      # will be shorter than min_event_height
+      combined_events = []
+      last_combined_event = []
       day_events.select(&event_filter).each do |event|
-        event_height = event.duration / 3600.0 * hour_height
-        bounding_box([left_offset, top_offset], width: event_column_width, height: event_height) do
-          text event.name
+        last_combined_event << event
+        combined_events_height = last_combined_event.map { |e| e.duration / 3600.0 * hour_height }.reduce(:+)
+
+        if combined_events_height >= min_event_height
+          combined_events << last_combined_event
+          last_combined_event = []
         end
-        top_offset += event_height
+      end
+
+      combined_events.each do |events|
+        event_box_height = events.map { |event| event.duration / 3600.0 * hour_height }.reduce(:+)
+
+        # Draw boxes
+        fill_color properties[:background_color]
+        stroke_color properties[:text_color]
+        self.line_width = 2
+        stroke_rounded_rectangle [left_offset, top_offset], event_column_width, event_box_height, 10
+        fill_rounded_rectangle [left_offset, top_offset], event_column_width, event_box_height, 10
+        fill_color properties[:text_color]
+
+        bounding_box([left_offset, top_offset], width: event_column_width, height: event_box_height) do
+          text events.map(&:name).join(', '), size: 7
+        end
+        top_offset -= event_box_height
       end
       left_offset += event_column_width
     end
-
   end
+
+  # Sponsors
+  start_new_page
+  image "#{root_path}/images/sponsors.png", fit: [bounds.width - 20, bounds.height - 20],
+                                            position: :center,
+                                            vposition: :center
 end
 
 puts "Generated #{output_file}"

@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 require 'csv'
 require 'date'
 
@@ -41,6 +43,14 @@ class Schedule
       @fields[field] = value
     end
 
+    def name
+      coffee_break? ? 'Почивка' : @fields['name']
+    end
+
+    def coffee_break?
+      type == 'почивка'
+    end
+
     # In seconds
     def duration
       return 1800 unless ends_at
@@ -57,10 +67,8 @@ class Schedule
 
     # Try to fill in the end time of most events
     @events.each_with_index do |event, i|
-      next_event = @events[i + 1]
-      next unless next_event && next_event.date == event.date
-
-      event.set 'ends_at', next_event.starts_at
+      next_event = @events[i + 1 .. -1].find { |e| e.date == event.date && e.location == event.location }
+      event.set 'ends_at', next_event ? next_event.starts_at : nil
     end
   end
 
