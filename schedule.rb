@@ -21,7 +21,9 @@ class Schedule
       field = field.to_s
       value = @fields[field]
 
-      case field
+      return value unless value.kind_of? String
+
+      value = case field
       when 'date'
         Date.parse(value)
       when /_at$/
@@ -31,17 +33,38 @@ class Schedule
       else
         value
       end
+
+      @fields[field] = value
+    end
+
+    def set(field, value)
+      @fields[field] = value
+    end
+
+    # In seconds
+    def duration
+      return 1800 unless ends_at
+      ends_at - starts_at
     end
   end
 
   def initialize(input_file)
     @rows = CSV.read input_file
     @field_names = @rows.shift
+
+    # Convert rows to events and sort them by start time
+    @events = @rows.map { |values| Event.new @field_names.zip(values) }.sort_by(&:starts_at)
+
+    # Try to fill in the end time of most events
+    @events.each_with_index do |event, i|
+      next_event = @events[i + 1]
+      next unless next_event && next_event.date == event.date
+
+      event.set 'ends_at', next_event.starts_at
+    end
   end
 
-  def each
-    @rows.each do |values|
-      yield Event.new(@field_names.zip(values))
-    end
+  def each(&block)
+    @events.each(&block)
   end
 end

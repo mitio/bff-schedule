@@ -4,7 +4,7 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'prawn'
-require_relative '../day'
+require_relative '../helpers'
 require_relative '../schedule'
 
 if ARGV.size < 2
@@ -14,22 +14,65 @@ end
 
 input_file, output_file = ARGV
 schedule = Schedule.new input_file
-main_font = File.expand_path('../../fonts/DejaVuSans.ttf', __FILE__)
 
-Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do |pdf|
-  pdf.font main_font
+# Settings
+main_font          = File.expand_path('../../fonts/DejaVuSans.ttf', __FILE__)
+hour_height        = 37
+hour_column_width  = 60
+event_column_width = 110
+events_columns = {
+  -> event { event.location == 'Тържествена зала' } => 'EFACB2',
+  -> event { event.location == 'Заседателна зала' } => 'C0FCC3',
+}
+hour_labels = {
+  '10:30' => 1.5,
+  '12:00' => 1.5,
+  '13:30' => 2.5,
+  '17:30' => 2.5,
+  '20:00' => 2.5,
+  '22:30' => 1.5,
+  '00:00' => 0.5,
+}
+
+Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :landscape) do
+  font main_font, size: 10
 
   # First page
-  pdf.font main_font, size: 20, style: :bold do
-    pdf.text 'Банско филм фест', align: :center
-    pdf.text '2012', align: :center
+  font main_font, size: 20, style: :bold do
+    text 'Банско филм фест', align: :center
+    text '2012', align: :center
   end
 
   schedule.sort_by(&:starts_at).group_by(&:date).each do |date, day_events|
-    day_events.group_by(&:location).each do |location, events|
-      pdf.start_new_page margin: 10
-      pdf.text "Location: #{location} Date: #{date} Ev: #{events.size}"
+    start_new_page margin: 10
+    text "#{weekday_for date}, #{date.day}-и"
+
+    move_down 10
+    columns_top = cursor
+
+    # Hours column
+    hour_labels.each do |hour_label, duration|
+      hour_box_height = duration * hour_height
+      bounding_box([0, columns_top], width: hour_column_width, height: hour_box_height) do
+        text hour_label
+      end
+      move_down hour_box_height
     end
+
+    # Events columns
+    left_offset = hour_column_width
+    events_columns.each do |event_filter, column_color|
+      top_offset = columns_top
+      day_events.select(&event_filter).each do |event|
+        event_height = event.duration / 3600.0 * hour_height
+        bounding_box([left_offset, top_offset], width: event_column_width, height: event_height) do
+          text event.name
+        end
+        top_offset += event_height
+      end
+      left_offset += event_column_width
+    end
+
   end
 end
 
