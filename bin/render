@@ -20,35 +20,57 @@ root_path = File.expand_path('../..', __FILE__)
 font_path = "#{root_path}/fonts/Helvetica.dfont"
 main_font = 'Helvetica'
 
-hour_height        = 25
-hour_column_width  = 40
-event_column_width = 150
-min_event_height   = 10
-column_spacing     = 10
-event_padding      = 1
-main_text_color    = '333131'
-hours_color        = '555353'
-hour_lines_color   = 'DDD9D8'
-columns_left       = 35
-event_columns      = {
+hour_height         = 25
+hour_column_width   = 40
+event_column_width  = 150
+min_event_height    = 10
+column_spacing      = 10
+event_padding       = 1
+main_text_color     = '333131'
+hours_color         = '555353'
+hour_lines_color    = 'DDD9D8'
+columns_left        = 35
+narrow_column_width = 67
+event_columns       = {
   -> event { event.location == 'Тържествена зала' } => {
     background_color: 'EFACB2',
     text_color: 'B71C16',
     left: columns_left,
-    width: 50,
+    width: narrow_column_width,
   },
   -> event { event.location == 'Заседателна зала' } => {
     background_color: 'C0FCC3',
     text_color: '388712',
-    left: columns_left + 60,
-    width: 50,
+    left: columns_left + narrow_column_width + column_spacing,
+    width: narrow_column_width,
+  },
+  -> event {
+    (
+      [
+        'Градския парк (пред хотел Гардения)',
+        'площад "Н. Й. Вапцаров"',
+        'Фоайето на читалището',
+        'Читалището',
+        'Барът в хотел Бъндерица',
+      ].include?(event.location)
+    ) or (
+      [
+        'хотел Гардения',
+        'Голяма зала',
+      ].include?(event.location) and event.starts_at.hour <= 17
+    )
+  } => {
+    background_color: 'ded8db',
+    text_color: '747174',
+    left: columns_left + narrow_column_width * 2 + column_spacing * 2,
+    width: narrow_column_width,
   },
   -> event { event.location == 'Голяма зала' and event.starts_at.hour > 17 } => {
     background_color: 'F9E0BD',
     text_color: 'E5601E',
     left: columns_left,
   },
-  -> event { event.location == 'хотел Гардения' } => {
+  -> event { event.location == 'хотел Гардения' and event.starts_at.hour > 17 } => {
     background_color: 'CDD0F9',
     text_color: '3274E5',
     left: columns_left,
@@ -88,15 +110,18 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
       event.number = event_index + 1
     end
 
+    day_starts_at = Time.new date.year, date.month, date.day, *start_hour
+
     # Visual event bubbles page
     start_new_page margin: 20
 
+    # Weekday for the page title
+    move_up 5
     fill_color main_text_color
     text "<b>#{weekday_for date}</b>, #{date.day}<sup>-#{day_suffix_for date.day}</sup>", inline_format: true, size: 12, align: :center
+    move_down 15
 
-    move_down 10
     columns_top = cursor
-    day_starts_at = Time.new date.year, date.month, date.day, *start_hour
 
     # Hours
     fill_color hours_color
