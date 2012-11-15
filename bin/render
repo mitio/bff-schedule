@@ -252,11 +252,7 @@ Prawn::Document.generate(output_file, page_size: [297.64 + 2 * print_margins, 41
 
       event_number = sprintf('% 2s.', event.number).gsub ' ', Prawn::Text::NBSP
       event_time   = event.starts_at.strftime('%H:%M')
-      event_info   = event.name
-
-      # if css[:show_location_in_name]
-        event_info = "#{event_info} (#{event.location})"
-      # end
+      event_info   = "#{event.name} (#{event.location})"
 
       fill_color css[:text_color]
       text_box event_number, at: [0, cursor], width: 15, align: :right
