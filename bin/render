@@ -31,6 +31,8 @@ hours_color         = '555353'
 hour_lines_color    = 'DDD9D8'
 columns_left        = 35
 narrow_column_width = 67
+print_margins       = 10
+print_border_color  = 'CCCCCC'
 event_columns       = {
   -> event { event.location == 'Тържествена зала' } => {
     background_color: 'EFACB2',
@@ -94,7 +96,15 @@ hour_labels = {
   '00:00' => 0.5,
 }
 
-Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, margin: 0) do
+Prawn::Document.generate(output_file, page_size: [297.64 + 2 * print_margins, 419.53 + 2 * print_margins], page_layout: :portrait, margin: print_margins) do
+  if print_margins > 0
+    repeat(:all) do
+      stroke_color print_border_color
+      line_width 1
+      stroke_rectangle [bounds.left - 1, bounds.top + 1], bounds.width + 2, bounds.height + 2
+    end
+  end
+
   font_families.update 'Helvetica' => {
     normal:      {file: font_path, font: 'Helvetica'},
     italic:      {file: font_path, font: 'Helvetica-Italic'},
@@ -110,7 +120,7 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, m
                                             vposition: :center
 
   # First page
-  start_new_page margin: 20
+  start_new_page margin: 20 + print_margins
   move_down 20
   font main_font, size: 20, style: :bold do
     fill_color 'CCC6C5'
@@ -151,7 +161,7 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, m
     day_starts_at = Time.new date.year, date.month, date.day, *start_hour
 
     # Visual event bubbles page
-    start_new_page margin: 20
+    start_new_page margin: 20 + print_margins
 
     # Weekday for the page title
     move_up 5
@@ -230,7 +240,7 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, m
     end
 
     # Detailed events page
-    start_new_page margin: 10
+    start_new_page margin: 10 + print_margins
 
     fill_color main_text_color
     text "#{page_number}", align: :right
@@ -244,9 +254,9 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, m
       event_time   = event.starts_at.strftime('%H:%M')
       event_info   = event.name
 
-      if css[:show_location_in_name]
+      # if css[:show_location_in_name]
         event_info = "#{event_info} (#{event.location})"
-      end
+      # end
 
       fill_color css[:text_color]
       text_box event_number, at: [0, cursor], width: 15, align: :right
@@ -258,8 +268,8 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, m
   end
 
   # Sponsors
-  start_new_page margin: 10
-  image "#{root_path}/images/sponsors.jpg", fit: [bounds.width - 20, bounds.height - 20],
+  start_new_page margin: 10 + print_margins
+  image "#{root_path}/images/sponsors.jpg", fit: [bounds.width - 20 - 2 * print_margins, bounds.height - 20 - 2 * print_margins],
                                             position: :center,
                                             vposition: :center
 end
