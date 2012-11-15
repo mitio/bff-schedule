@@ -68,7 +68,7 @@ class Schedule
     # Try to fill in the end time of most events
     @events.each_with_index do |event, i|
       next_event = @events[i + 1 .. -1].find { |e| e.date == event.date && e.location == event.location }
-      event.set 'ends_at', next_event ? next_event.starts_at : nil
+      event.set 'ends_at', event.ends_at || next_event.starts_at if next_event
     end
   end
 
