@@ -31,9 +31,10 @@ class Schedule
       when 'date'
         Date.parse(value)
       when /_at$/
-        date = get 'date'
-        hour, min, sec = value.split(':').map(&:to_i)
-        Time.new date.year, date.month, date.day, hour, min, sec
+        date, time       = value.split(' ')
+        day, month, year = date.split('.').map(&:to_i)
+        time             = time.split(':').map(&:to_i)
+        Time.new year, month, day, *time
       else
         value
       end
@@ -51,6 +52,10 @@ class Schedule
 
     def coffee_break?
       type == 'почивка'
+    end
+
+    def daytime?
+      (9..17) === starts_at.hour
     end
 
     # In seconds

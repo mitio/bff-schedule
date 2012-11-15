@@ -20,10 +20,10 @@ root_path = File.expand_path('../..', __FILE__)
 font_path = "#{root_path}/fonts/Helvetica.dfont"
 main_font = 'Helvetica'
 
-hour_height         = 25
+hour_height         = 24
 hour_column_width   = 40
 event_column_width  = 150
-min_event_height    = 10
+min_event_height    = 12
 column_spacing      = 10
 event_padding       = 1
 main_text_color     = '333131'
@@ -37,17 +37,19 @@ event_columns       = {
     text_color: 'B71C16',
     left: columns_left,
     width: narrow_column_width,
+    legend_name: 'Тържествена зала на читалище "Н. Й. Вапцаров"',
   },
   -> event { event.location == 'Заседателна зала' } => {
     background_color: 'C0FCC3',
     text_color: '388712',
     left: columns_left + narrow_column_width + column_spacing,
     width: narrow_column_width,
+    legend_name: 'Заседателна зала на читалище "Н. Й. Вапцаров"',
   },
   -> event {
     (
       [
-        'Градския парк (пред хотел Гардения)',
+        'Градския парк, пред хотел Гардения',
         'площад "Н. Й. Вапцаров"',
         'Фоайето на читалището',
         'Читалището',
@@ -57,23 +59,27 @@ event_columns       = {
       [
         'хотел Гардения',
         'Голяма зала',
-      ].include?(event.location) and event.starts_at.hour <= 17
+      ].include?(event.location) and event.daytime?
     )
   } => {
     background_color: 'ded8db',
     text_color: '747174',
     left: columns_left + narrow_column_width * 2 + column_spacing * 2,
     width: narrow_column_width,
+    legend_name: 'Изложби, семинари, открити уроци и други',
+    show_location_in_name: true,
   },
-  -> event { event.location == 'Голяма зала' and event.starts_at.hour > 17 } => {
+  -> event { event.location == 'Голяма зала' and not event.daytime? } => {
     background_color: 'F9E0BD',
     text_color: 'E5601E',
     left: columns_left,
+    legend_name: 'Голяма зала на читалище "Н. Й. Вапцаров"',
   },
-  -> event { event.location == 'хотел Гардения' and event.starts_at.hour > 17 } => {
+  -> event { event.location == 'хотел Гардения' and not event.daytime? } => {
     background_color: 'CDD0F9',
     text_color: '3274E5',
     left: columns_left,
+    legend_name: 'Хотел Гардения, прожекции на нощно кино',
   },
 }
 start_hour  = [10, 0, 0]
@@ -88,7 +94,7 @@ hour_labels = {
   '00:00' => 0.5,
 }
 
-Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) do
+Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait, margin: 0) do
   font_families.update 'Helvetica' => {
     normal:      {file: font_path, font: 'Helvetica'},
     italic:      {file: font_path, font: 'Helvetica-Italic'},
@@ -98,11 +104,43 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
   font main_font, size: 8
   fill_color main_text_color
 
+  # Frontpage
+  image "#{root_path}/images/frontpage.jpg", fit: [bounds.width, bounds.height],
+                                            position: :center,
+                                            vposition: :center
+
   # First page
+  start_new_page margin: 20
+  move_down 20
   font main_font, size: 20, style: :bold do
-    text 'Банско филм фест', align: :center
-    text '2012', align: :center
+    fill_color 'CCC6C5'
+    text 'Банско Филм Фест 2012', leading: 6
+    fill_color main_text_color
+    text 'ПРОГРАМА'
   end
+
+  # Legend
+  move_down 150
+  font main_font, size: 14 do
+    fill_color main_text_color
+    text 'Легенда'
+  end
+  move_down 10
+  font main_font, size: 10 do
+    event_columns.each do |_, css|
+      fill_color css[:background_color]
+      fill_rounded_rectangle [0, cursor + 1], 10, 10, 2
+
+      fill_color css[:text_color]
+      indent(17) { text css[:legend_name], leading: 4 }
+    end
+  end
+
+  # Notes
+  move_down 30
+  fill_color main_text_color
+  text 'В програмата са посочени началните часове на всяко събитие. Организаторите си запазват правото за промени и размествания. Програмата е достъпна и в електронен вид на адрес:', leading: 3
+  text 'http://banskofilmfest.com/schedule-2012/', link: 'http://banskofilmfest.com/schedule-2012/', color: '3274E5'
 
   schedule.sort_by(&:starts_at).group_by(&:date).each_with_index do |(date, day_events), date_index|
     # Give numbers to the events
@@ -204,19 +242,24 @@ Prawn::Document.generate(output_file, page_size: 'A6', page_layout: :portrait) d
 
       event_number = sprintf('% 2s.', event.number).gsub ' ', Prawn::Text::NBSP
       event_time   = event.starts_at.strftime('%H:%M')
+      event_info   = event.name
+
+      if css[:show_location_in_name]
+        event_info = "#{event_info} (#{event.location})"
+      end
 
       fill_color css[:text_color]
       text_box event_number, at: [0, cursor], width: 15, align: :right
       text_box event_time,   at: [20, cursor], width: 25, style: :bold
-      text_box event.name,   at: [50, cursor], width: 220, leading: 2
-      move_down height_of(event.name, width: 220, leading: 2)
+      text_box event_info,   at: [50, cursor], width: bounds.right - 50, leading: 2
+      move_down height_of(event_info, width: bounds.right - 50, leading: 2)
     end
 
   end
 
   # Sponsors
-  start_new_page
-  image "#{root_path}/images/sponsors.png", fit: [bounds.width - 20, bounds.height - 20],
+  start_new_page margin: 10
+  image "#{root_path}/images/sponsors.jpg", fit: [bounds.width - 20, bounds.height - 20],
                                             position: :center,
                                             vposition: :center
 end
