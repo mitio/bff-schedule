@@ -15,7 +15,7 @@ current_key    = nil
 CSV.foreach(input_file) do |row|
   row.shift # drop the first column
 
-  next if row.all? { |cell| cell.nil? or cell.to_s.strip == '' }
+  # next if row.all? { |cell| cell.nil? or cell.to_s.strip == '' }
 
   if row.first.to_s =~ /\bname="(\w+)"/i
     current_key = $1.downcase.strip
