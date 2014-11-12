@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require 'csv'
+
+if ARGV.size < 1
+  puts "Usage: #{__FILE__} path-to-schedule.csv"
+  exit 1
+end
+
+input_file     = ARGV.first
+schedule_parts = {}
+current_key    = nil
+
+CSV.foreach(input_file) do |row|
+  row.shift # drop the first column
+
+  next if row.all? { |cell| cell.nil? or cell.to_s.strip == '' }
+
+  if row.first.to_s =~ /\bname="(\w+)"/i
+    current_key = $1.downcase.strip
+    next
+  end
+
+  schedule_parts[current_key] ||= []
+  schedule_parts[current_key] << row
+end
+
+schedule_parts.each do |name, rows|
+  output_file_name = "#{name}.csv"
+  puts "Creating #{output_file_name} with #{rows.count} rows"
+
+  CSV.open(output_file_name, 'wb') do |csv|
+    rows.each do |row|
+      csv << row
+    end
+  end
+end
