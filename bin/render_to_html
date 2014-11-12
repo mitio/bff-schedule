@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require 'rubygems'
+require 'bundler/setup'
+require 'net/http'
+require 'prawn'
+require_relative '../helpers'
+require_relative '../schedule'
+
+if ARGV.size < 2
+  puts "Usage: #{__FILE__} path-to-output.html"
+  exit 1
+end
+
+output_file = ARGV
+input_file  = Net::HTTP.get(URI('https://docs.google.com/spreadsheet/pub?key=0ArF6zUNJ65HOdDNVenFsUWl5VjBBaTE4M3ZFTkhqb3c&single=true&gid=0&output=csv'))
+root_path   = File.expand_path('../..', __FILE__)
+schedule    = Schedule.new input_file
+
+# Settings
+
+puts "Generated #{output_file}"
