@@ -8,22 +8,26 @@ if ARGV.size < 1
   exit 1
 end
 
-input_file     = ARGV.first
-schedule_parts = {}
-current_key    = nil
+input_file         = ARGV.first
+schedule_parts     = {}
+current_key        = nil
+skip_next_if_blank = false
 
 CSV.foreach(input_file) do |row|
   row.shift # drop the first column
 
-  # next if row.all? { |cell| cell.nil? or cell.to_s.strip == '' }
+  next if skip_next_if_blank and row.all? { |cell| cell.nil? or cell.to_s.strip == '' }
 
   if row.first.to_s =~ /\bname="(\w+)"/i
     current_key = $1.downcase.strip
+    skip_next_if_blank = true
     next
   end
 
   schedule_parts[current_key] ||= []
   schedule_parts[current_key] << row
+
+  skip_next_if_blank = false
 end
 
 schedule_parts.each do |name, rows|
